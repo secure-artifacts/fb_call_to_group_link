@@ -234,7 +234,8 @@
             node instanceof Element &&
             (node.id === BADGE_ID ||
               node.id === WARN_ID ||
-              node.closest?.(`#${BADGE_ID}, #${WARN_ID}`) ||
+              node.id === "fb-group-link-finder-hangup-modal" ||
+              node.closest?.(`#${BADGE_ID}, #${WARN_ID}, #fb-group-link-finder-hangup-modal`) ||
               node.getAttribute?.("data-fb-group-link-finder"))
         )
       );
