@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "FB 通话 → 群聊链接",
-  "version": "1.3.1",
-  "description": "解析 FB 通话群聊链接，检测复制组并提醒原组/复制组",
+  "name": "FB复制组查找器",
+  "version": "1.3.2",
+  "description": "从 FB 通话链接查找复制组群聊，解析 messages/t/ 链接并提醒原组/复制组",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage"],
   "host_permissions": [
     "https://www.facebook.com/*",
@@ -13,7 +13,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "查找群聊 / 检测复制组"
+    "default_title": "FB复制组查找器"
   },
   "background": {
     "service_worker": "background.js"
