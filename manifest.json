@@ -1,19 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "FB复制组查找器",
-  "version": "1.5.0",
-  "description": "FB复制组查找器：解析群聊链接，检测复制组与通话意外挂断并提醒",
-  "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage"],
+  "name": "FB小组检测器",
+  "version": "1.6.0",
+  "description": "FB小组检测器：解析群聊链接，检测复制组与通话意外挂断并提醒",
+  "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage", "downloads"],
   "host_permissions": [
     "https://www.facebook.com/*",
     "https://facebook.com/*",
     "https://www.messenger.com/*",
     "https://messenger.com/*",
-    "https://m.me/*"
+    "https://m.me/*",
+    "https://api.github.com/*",
+    "https://github.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "FB复制组查找器"
+    "default_title": "FB小组检测器"
   },
   "background": {
     "service_worker": "background.js"

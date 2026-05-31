@@ -200,3 +200,78 @@ button:disabled {
 footer {
   margin-top: 12px;
 }
+
+.update-card {
+  margin-top: 12px;
+}
+
+.update-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.update-version {
+  font-size: 13px;
+  color: #65676b;
+}
+
+.update-version strong {
+  color: #050505;
+}
+
+.update-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.update-panel.info {
+  background: #e7f3ff;
+  color: #0a58ca;
+}
+
+.update-panel.success {
+  background: #e7f7ed;
+  color: #067647;
+}
+
+.update-panel.warning {
+  background: #fff4e5;
+  color: #b54708;
+}
+
+.update-panel.error {
+  background: #fde8e8;
+  color: #b42318;
+}
+
+.update-panel strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.update-panel ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.update-panel a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.update-actions button {
+  padding: 6px 10px;
+  font-size: 12px;
+}

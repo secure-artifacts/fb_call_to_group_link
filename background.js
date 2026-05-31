@@ -1,6 +1,37 @@
 const ALERT_STORAGE_KEY = "lastCopyGroupAlert";
+const UPDATE_INFO_KEY = "lastUpdateCheck";
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "DOWNLOAD_UPDATE") {
+    const url = message.downloadUrl;
+    if (!url || !/^https:\/\/github\.com\//i.test(url)) {
+      sendResponse({ ok: false, error: "无效的下载地址。" });
+      return true;
+    }
+
+    chrome.downloads.download(
+      {
+        url,
+        filename: message.zipName || undefined,
+        saveAs: false,
+      },
+      (downloadId) => {
+        if (chrome.runtime.lastError || !downloadId) {
+          sendResponse({ ok: false, error: chrome.runtime.lastError?.message || "下载失败。" });
+          return;
+        }
+        sendResponse({ ok: true, downloadId });
+      }
+    );
+    return true;
+  }
+
+  if (message?.type === "SAVE_UPDATE_CHECK") {
+    chrome.storage.local.set({ [UPDATE_INFO_KEY]: message.info || null }, () => {
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
   if (message?.type === "COPY_GROUP_ALERT") {
     const alert = message.alert;
     if (!alert?.detected) {

@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FB复制组查找器</title>
+    <title>FB小组检测器</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header>
-      <h1>FB复制组查找器</h1>
+      <h1>FB小组检测器</h1>
       <p>从通话链接查找复制组群聊，解析 messages/t/ 链接</p>
     </header>
 
@@ -34,11 +34,20 @@
       <ul id="resultList"></ul>
     </section>
 
+    <section class="card update-card">
+      <div class="update-header">
+        <span class="update-version">当前版本 <strong id="currentVersion">-</strong></span>
+        <button id="checkUpdateBtn" type="button" class="secondary">检查更新</button>
+      </div>
+      <section id="updatePanel" class="update-panel" hidden></section>
+    </section>
+
     <footer>
       <p>复制组：通话中邀请组外成员后，FB 会新建群聊，原组通话常断开。插件会提醒并给出复制组链接。</p>
     </footer>
 
     <script src="extractor.js"></script>
+    <script src="update-checker.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -5,6 +5,9 @@ const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 const resultListEl = document.getElementById("resultList");
 const copyAlertEl = document.getElementById("copyAlert");
+const currentVersionEl = document.getElementById("currentVersion");
+const checkUpdateBtn = document.getElementById("checkUpdateBtn");
+const updatePanelEl = document.getElementById("updatePanel");
 
 function escapeHtml(text) {
   return String(text || "")
@@ -248,8 +251,172 @@ async function scanFromPastedUrl() {
   }
 }
 
+function renderUpdatePanel(type, html) {
+  updatePanelEl.hidden = false;
+  updatePanelEl.className = `update-panel ${type}`;
+  updatePanelEl.innerHTML = html;
+}
+
+function hideUpdatePanel() {
+  updatePanelEl.hidden = true;
+  updatePanelEl.innerHTML = "";
+}
+
+function formatUpdateSteps() {
+  return `
+    <ol>
+      <li>等待 zip 下载完成（一般在「下载」文件夹）</li>
+      <li>解压 zip，覆盖原插件文件夹</li>
+      <li>打开 <code>chrome://extensions</code>，点击插件的「重新加载」</li>
+    </ol>
+  `;
+}
+
+async function downloadLatestUpdate(info) {
+  if (!info?.downloadUrl) {
+    chrome.tabs.create({ url: info?.releaseUrl || FBUpdateChecker.RELEASE_PAGE });
+    return { ok: false, openedRelease: true };
+  }
+
+  return chrome.runtime.sendMessage({
+    type: "DOWNLOAD_UPDATE",
+    downloadUrl: info.downloadUrl,
+    zipName: info.zipName,
+  });
+}
+
+async function checkForUpdates({ silent = false } = {}) {
+  if (!silent) {
+    checkUpdateBtn.disabled = true;
+    renderUpdatePanel("info", "<strong>正在检查更新…</strong><div>正在从 GitHub 获取最新版本。</div>");
+  }
+
+  try {
+    const info = await FBUpdateChecker.checkForUpdate();
+
+    chrome.runtime.sendMessage({
+      type: "SAVE_UPDATE_CHECK",
+      info: {
+        checkedAt: Date.now(),
+        latestVersion: info.latestVersion,
+        updateAvailable: info.updateAvailable,
+      },
+    });
+
+    if (info.updateAvailable) {
+      renderUpdatePanel(
+        "warning",
+        `
+          <strong>发现新版本 v${escapeHtml(info.latestVersion)}</strong>
+          <div>当前 v${escapeHtml(info.currentVersion)} → 最新 v${escapeHtml(info.latestVersion)}</div>
+          <div class="update-actions">
+            <button type="button" id="downloadUpdateBtn">下载最新版</button>
+            <button type="button" id="openReleaseBtn" class="secondary">打开 Release 页</button>
+          </div>
+          ${formatUpdateSteps()}
+        `
+      );
+      bindUpdatePanelActions(info);
+      return info;
+    }
+
+    if (!silent) {
+      renderUpdatePanel(
+        "success",
+        `<strong>已是最新版本</strong><div>当前 v${escapeHtml(info.currentVersion)} 与 GitHub 最新版一致。</div>`
+      );
+    } else {
+      hideUpdatePanel();
+    }
+    return info;
+  } catch (error) {
+    if (!silent) {
+      renderUpdatePanel(
+        "error",
+        `
+          <strong>检查更新失败</strong>
+          <div>${escapeHtml(error.message || "网络错误")}</div>
+          <div class="update-actions">
+            <button type="button" id="openReleaseBtn" class="secondary">打开 Release 页</button>
+          </div>
+        `
+      );
+      bindUpdatePanelActions({ releaseUrl: FBUpdateChecker.RELEASE_PAGE });
+    }
+    return null;
+  } finally {
+    checkUpdateBtn.disabled = false;
+  }
+}
+
+function bindUpdatePanelActions(info) {
+  updatePanelEl.querySelector("#downloadUpdateBtn")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "下载中…";
+
+    try {
+      const result = await downloadLatestUpdate(info);
+      if (result?.ok) {
+        button.textContent = "已开始下载";
+        renderUpdatePanel(
+          "info",
+          `
+            <strong>正在下载 v${escapeHtml(info.latestVersion)}</strong>
+            <div>请在浏览器下载栏查看进度，完成后按下列步骤更新插件。</div>
+            ${formatUpdateSteps()}
+          `
+        );
+      } else if (result?.openedRelease) {
+        button.textContent = "已打开 Release";
+      } else {
+        throw new Error(result?.error || "下载失败");
+      }
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = "下载最新版";
+      renderUpdatePanel(
+        "error",
+        `
+          <strong>下载失败</strong>
+          <div>${escapeHtml(error.message || "请稍后重试")}</div>
+          <div class="update-actions">
+            <button type="button" id="openReleaseBtn" class="secondary">打开 Release 页</button>
+          </div>
+        `
+      );
+      bindUpdatePanelActions(info);
+    }
+  });
+
+  updatePanelEl.querySelector("#openReleaseBtn")?.addEventListener("click", () => {
+    chrome.tabs.create({ url: info.releaseUrl || FBUpdateChecker.RELEASE_PAGE });
+  });
+}
+
 scanTabBtn.addEventListener("click", scanCurrentTab);
 scanUrlBtn.addEventListener("click", scanFromPastedUrl);
+checkUpdateBtn.addEventListener("click", () => checkForUpdates());
+
+currentVersionEl.textContent = `v${FBUpdateChecker.getCurrentVersion()}`;
+
+checkForUpdates({ silent: true }).then((info) => {
+  if (info?.updateAvailable) {
+    renderUpdatePanel(
+      "warning",
+      `
+        <strong>发现新版本 v${escapeHtml(info.latestVersion)}</strong>
+        <div>当前 v${escapeHtml(info.currentVersion)} → 最新 v${escapeHtml(info.latestVersion)}</div>
+        <div class="update-actions">
+          <button type="button" id="downloadUpdateBtn">下载最新版</button>
+          <button type="button" id="openReleaseBtn" class="secondary">打开 Release 页</button>
+        </div>
+        ${formatUpdateSteps()}
+      `
+    );
+    bindUpdatePanelActions(info);
+  }
+});
 
 getActiveTab().then((tab) => {
   if (tab?.url && isFacebookUrl(tab.url)) {
