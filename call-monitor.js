@@ -25,19 +25,8 @@
   let lastHangupAlertAt = 0;
   let sessionDismissed = false;
 
-  function escapeHtml(text) {
-    return String(text || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function stopEvent(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-  }
+  const escapeHtml = FBGroupLinkUI.escapeHtml;
+  const stopEvent = FBGroupLinkUI.stopEvent;
 
   function isCallContext() {
     const pathQuery = location.pathname + location.search;
@@ -134,6 +123,7 @@
 
   function showCenterHangupModal(message, copyUrl) {
     if (sessionDismissed || document.getElementById(MODAL_ID)) return;
+    if (document.getElementById("fb-group-link-finder-copy-modal")) return;
 
     const now = Date.now();
     if (now - lastHangupAlertAt < 3000) return;
@@ -272,17 +262,31 @@
       return;
     }
 
+    if (document.getElementById("fb-group-link-finder-copy-modal")) {
+      callWasActive = false;
+      callActiveSince = 0;
+      return;
+    }
+
     let copyGroupAlert = { detected: false };
-    let copyUrl = "";
+    let best = null;
 
     if (globalThis.FBGroupLinkExtractor) {
       const analysis = FBGroupLinkExtractor.analyzeDocument(document, location.href);
       copyGroupAlert = analysis.copyGroupAlert || copyGroupAlert;
-      const best = FBGroupLinkExtractor.pickBestResult(analysis.items, copyGroupAlert);
-      copyUrl = copyGroupAlert.copyThread?.url || best?.url || "";
+      best = FBGroupLinkExtractor.pickBestResult(analysis.items, copyGroupAlert);
     }
 
-    showCenterHangupModal(buildHangupMessage(copyGroupAlert), copyUrl);
+    if (copyGroupAlert.detected) {
+      document.dispatchEvent(
+        new CustomEvent("fb-show-copy-alert", { detail: { alert: copyGroupAlert, best } })
+      );
+      callWasActive = false;
+      callActiveSince = 0;
+      return;
+    }
+
+    showCenterHangupModal(buildHangupMessage(copyGroupAlert), best?.url || "");
     callWasActive = false;
     callActiveSince = 0;
   }
@@ -326,7 +330,11 @@
     pollTimer = setInterval(onCallStateTick, POLL_MS);
     onCallStateTick();
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
+      const fromOurPanel = mutations.some((mutation) =>
+        [...mutation.addedNodes, ...mutation.removedNodes].some((node) => FBGroupLinkUI.isOurPanelNode(node))
+      );
+      if (fromOurPanel) return;
       onCallStateTick();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });

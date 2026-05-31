@@ -3,7 +3,10 @@ const ALERT_STORAGE_KEY = "lastCopyGroupAlert";
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "COPY_GROUP_ALERT") {
     const alert = message.alert;
-    if (!alert?.detected) return;
+    if (!alert?.detected) {
+      sendResponse({ ok: false });
+      return true;
+    }
 
     const copyName = alert.copyThread?.name || "复制组";
     const originalName = alert.originalThread?.name || "原组";

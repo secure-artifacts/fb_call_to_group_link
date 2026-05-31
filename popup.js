@@ -6,6 +6,14 @@ const resultsEl = document.getElementById("results");
 const resultListEl = document.getElementById("resultList");
 const copyAlertEl = document.getElementById("copyAlert");
 
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function setStatus(text, type = "info") {
   statusEl.hidden = !text;
   statusEl.textContent = text;
@@ -26,13 +34,19 @@ function renderCopyAlert(alert) {
   }
 
   copyAlertEl.hidden = false;
+  const originalName = escapeHtml(alert.originalThread?.name || "未知");
+  const originalUrl = escapeHtml(alert.originalThread?.url || "");
+  const copyName = escapeHtml(alert.copyThread?.name || "未知");
+  const copyUrl = escapeHtml(alert.copyThread?.url || "");
+  const summary = escapeHtml(alert.summary || "");
+
   copyAlertEl.innerHTML = `
-    <strong>⚠️ 原小组「${alert.originalThread?.name || "未知"}」已被生成复制组</strong>
-    <div>${alert.summary}</div>
-    <div class="thread-block"><strong>原小组名称：</strong>${alert.originalThread?.name || "未知"}</div>
-    <div class="thread-block"><strong>原小组链接：</strong><br><a href="${alert.originalThread?.url || "#"}" target="_blank" rel="noopener">${alert.originalThread?.url || "暂未识别"}</a></div>
-    <div class="thread-block"><strong>复制组名称：</strong>${alert.copyThread?.name || "未知"}</div>
-    <div class="thread-block"><strong>复制组链接：</strong><br><a href="${alert.copyThread?.url || "#"}" target="_blank" rel="noopener">${alert.copyThread?.url || "暂未识别"}</a></div>
+    <strong>⚠️ 原小组「${originalName}」已被生成复制组</strong>
+    <div>${summary}</div>
+    <div class="thread-block"><strong>原小组名称：</strong>${originalName}</div>
+    <div class="thread-block"><strong>原小组链接：</strong><br><a href="${originalUrl || "#"}" target="_blank" rel="noopener">${originalUrl || "暂未识别"}</a></div>
+    <div class="thread-block"><strong>复制组名称：</strong>${copyName}</div>
+    <div class="thread-block"><strong>复制组链接：</strong><br><a href="${copyUrl || "#"}" target="_blank" rel="noopener">${copyUrl || "暂未识别"}</a></div>
   `;
 }
 
@@ -48,15 +62,19 @@ function renderResults(items) {
 
   for (const item of items) {
     const tag = roleLabel(item.role);
+    const name = escapeHtml(item.groupName || "");
+    const url = escapeHtml(item.url || "");
+    const source = escapeHtml(item.source || "未知");
+    const hint = item.hint ? escapeHtml(item.hint) : "";
     const li = document.createElement("li");
     li.innerHTML = `
       ${tag ? `<span class="result-tag ${item.role}">${tag}</span>` : ""}
-      ${item.groupName ? `<strong>${item.groupName}</strong><br>` : ""}
-      <a class="result-url" href="${item.url}" target="_blank" rel="noopener">${item.url}</a>
-      <span class="result-meta">来源：${item.source || "未知"}${item.hint ? ` · ${item.hint}` : ""}</span>
+      ${name ? `<strong>${name}</strong><br>` : ""}
+      <a class="result-url" href="${url}" target="_blank" rel="noopener">${url}</a>
+      <span class="result-meta">来源：${source}${hint ? ` · ${hint}` : ""}</span>
       <div class="result-actions">
-        <button type="button" data-copy="${item.url}">复制</button>
-        <button type="button" data-open="${item.url}">打开</button>
+        <button type="button" data-copy="${url}">复制</button>
+        <button type="button" data-open="${url}">打开</button>
       </div>
     `;
     resultListEl.appendChild(li);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FB复制组查找器",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "FB复制组查找器：解析群聊链接，检测复制组与通话意外挂断并提醒",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage"],
   "host_permissions": [
@@ -26,7 +26,7 @@
         "https://www.messenger.com/*",
         "https://messenger.com/*"
       ],
-      "js": ["extractor.js", "content.js", "call-monitor.js"],
+      "js": ["extractor.js", "ui-shared.js", "content.js", "call-monitor.js"],
       "run_at": "document_idle"
     }
   ],

@@ -163,21 +163,28 @@
     };
   }
 
-  function loadStoredOriginalGroup(copyThreadId) {
+  function loadStoredOriginalGroupAny() {
     try {
       const raw = sessionStorage.getItem("fb-original-group-context");
       if (!raw) return null;
       const stored = JSON.parse(raw);
-      if (!stored?.id || stored.id === copyThreadId) return null;
       if (Date.now() - (stored.savedAt || 0) > 6 * 60 * 60 * 1000) return null;
       return {
         id: stored.id,
         url: stored.url || normalizeThreadUrl(stored.id),
         name: stored.name || "",
+        savedAt: stored.savedAt,
       };
     } catch {
       return null;
     }
+  }
+
+  function loadStoredOriginalGroup(copyThreadId) {
+    const stored = loadStoredOriginalGroupAny();
+    if (!stored?.id) return null;
+    if (copyThreadId && stored.id === copyThreadId) return null;
+    return stored;
   }
 
   function enrichCopyGroupAlert(alert, items, doc, pageText, scoredThreads) {
@@ -250,12 +257,15 @@
     const id = candidate.url.split("/messages/t/")[1];
     if (!id) return;
 
+    const existing = loadStoredOriginalGroupAny();
+    if (existing?.id === id && existing.name) return;
+
     sessionStorage.setItem(
       "fb-original-group-context",
       JSON.stringify({
         id,
         url: candidate.url,
-        name: candidate.groupName || extractVisibleGroupTitle(),
+        name: candidate.groupName || existing?.name || extractVisibleGroupTitle(),
         savedAt: Date.now(),
       })
     );
@@ -466,16 +476,21 @@
     }
 
     if (uiSignal && groupProfiles.length >= 1) {
+      const stored = loadStoredOriginalGroupAny();
       return {
         detected: true,
         confidence: "medium",
-        summary: "页面出现复制组/新建群相关提示。下方链接中请优先查看标记为「复制组」的群聊。",
+        summary: stored
+          ? `原小组「${stored.name || "未知"}」疑似已被生成复制组。`
+          : "页面出现复制组/新建群相关提示。",
         copyThread: {
           id: groupProfiles[0].id,
           url: groupProfiles[0].url,
           name: groupProfiles[0].groupName || "当前通话群聊",
         },
-        originalThread: null,
+        originalThread: stored
+          ? { id: stored.id, url: stored.url, name: stored.name || "原小组" }
+          : null,
         reason: "ui_signal",
       };
     }
@@ -549,9 +564,15 @@
 
   function collectPageText(doc) {
     const chunks = [doc.documentElement?.outerHTML || "", doc.body?.innerText || ""];
+    const MAX_SCRIPT_CHARS = 600000;
+    let scriptChars = 0;
 
     doc.querySelectorAll("script").forEach((node) => {
-      chunks.push(node.textContent || "");
+      if (scriptChars >= MAX_SCRIPT_CHARS) return;
+      const text = node.textContent || "";
+      const slice = text.slice(0, MAX_SCRIPT_CHARS - scriptChars);
+      chunks.push(slice);
+      scriptChars += slice.length;
     });
 
     doc.querySelectorAll("a[href*='/messages/t/'], a[href*='/t/']").forEach((anchor) => {
