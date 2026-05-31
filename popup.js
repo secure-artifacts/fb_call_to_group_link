@@ -26,15 +26,13 @@ function renderCopyAlert(alert) {
   }
 
   copyAlertEl.hidden = false;
-  const originalBlock = alert.originalThread
-    ? `<div class="thread-block"><strong>原组：</strong>${alert.originalThread.name}<br><a href="${alert.originalThread.url}" target="_blank" rel="noopener">${alert.originalThread.url}</a></div>`
-    : "";
-
   copyAlertEl.innerHTML = `
-    <strong>⚠️ 检测到复制组通话</strong>
+    <strong>⚠️ 原小组「${alert.originalThread?.name || "未知"}」已被生成复制组</strong>
     <div>${alert.summary}</div>
-    <div class="thread-block"><strong>复制组（要找的）：</strong>${alert.copyThread?.name || "未知"}<br><a href="${alert.copyThread?.url || "#"}" target="_blank" rel="noopener">${alert.copyThread?.url || ""}</a></div>
-    ${originalBlock}
+    <div class="thread-block"><strong>原小组名称：</strong>${alert.originalThread?.name || "未知"}</div>
+    <div class="thread-block"><strong>原小组链接：</strong><br><a href="${alert.originalThread?.url || "#"}" target="_blank" rel="noopener">${alert.originalThread?.url || "暂未识别"}</a></div>
+    <div class="thread-block"><strong>复制组名称：</strong>${alert.copyThread?.name || "未知"}</div>
+    <div class="thread-block"><strong>复制组链接：</strong><br><a href="${alert.copyThread?.url || "#"}" target="_blank" rel="noopener">${alert.copyThread?.url || "暂未识别"}</a></div>
   `;
 }
 

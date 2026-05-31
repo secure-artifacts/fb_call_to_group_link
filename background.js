@@ -7,10 +7,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     const copyName = alert.copyThread?.name || "复制组";
     const originalName = alert.originalThread?.name || "原组";
-    const title = "⚠️ 检测到 FB 复制组通话";
+    const title = "⚠️ 原组已被生成复制组";
     const messageText = alert.originalThread
-      ? `「${originalName}」可能出现复制组。\n当前复制组：${copyName}`
-      : `检测到复制组通话：${copyName}`;
+      ? `原小组「${originalName}」\n名称：${originalName}\n链接：${alert.originalThread.url || "未知"}\n复制组：${copyName}`
+      : `检测到复制组：${copyName}`;
 
     chrome.storage.local.set({
       [ALERT_STORAGE_KEY]: {

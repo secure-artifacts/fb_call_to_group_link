@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FB复制组查找器",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "FB复制组查找器：解析群聊链接，检测复制组与通话意外挂断并提醒",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage"],
   "host_permissions": [

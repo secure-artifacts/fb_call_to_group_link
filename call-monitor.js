@@ -121,7 +121,7 @@
     ];
     if (copyGroupAlert?.detected) {
       lines.push("");
-      lines.push("⚠️ 同时检测到可能出现复制组，原组通话可能已被替换。");
+      lines.push(`⚠️ 原组「${copyGroupAlert.originalThread?.name || "未知"}」已被生成复制组。`);
       if (copyGroupAlert.copyThread?.url) {
         lines.push(`复制组链接：${copyGroupAlert.copyThread.url}`);
       }

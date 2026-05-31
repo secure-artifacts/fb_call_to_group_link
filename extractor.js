@@ -90,6 +90,177 @@
     return "";
   }
 
+  function extractVisibleGroupTitle(doc = document) {
+    const selectors = [
+      '[data-testid="chat-title"]',
+      '[data-testid="conversation-title"]',
+      '[role="main"] h1',
+      '[role="main"] h2',
+      'h1[dir="auto"]',
+      'span[dir="auto"][role="heading"]',
+    ];
+
+    for (const selector of selectors) {
+      const el = doc.querySelector(selector);
+      const text = el?.textContent?.trim();
+      if (text && text.length >= 2 && text.length <= 120) {
+        return text;
+      }
+    }
+
+    const title = (doc.title || "").trim();
+    if (!title) return "";
+
+    const parts = title.split(/\s*[|\-–—·]\s*/);
+    const candidate = (parts[0] || title).trim();
+    if (/^(Messenger|Facebook|消息|Messages)$/i.test(candidate)) {
+      return (parts[1] || "").trim();
+    }
+    return candidate;
+  }
+
+  function enrichThreadRef(thread, pageText, scoredThreads, items, visibleTitle, preferOriginal) {
+    if (!thread) return null;
+
+    let id = thread.id || "";
+    let url = thread.url || normalizeThreadUrl(id);
+    id = id || (url ? url.split("/messages/t/")[1] : "");
+
+    let name = thread.name || thread.groupName || "";
+
+    if (!name && id && scoredThreads.has(id)) {
+      name = scoredThreads.get(id).groupName || "";
+    }
+
+    if (!name && id) {
+      const anchor = `"thread_fbid"\\s*:\\s*"${id}"`;
+      const match = pageText.match(new RegExp(anchor, "i"));
+      if (match?.index != null) {
+        const ctx = pageText.slice(Math.max(0, match.index - 900), match.index + 900);
+        name = extractGroupName(ctx);
+      }
+    }
+
+    if (!name) {
+      const item = items.find((entry) => entry.url?.includes(id));
+      name = item?.groupName || "";
+    }
+
+    if (!name && preferOriginal && visibleTitle) {
+      name = visibleTitle;
+    }
+
+    if (!url && id) {
+      url = normalizeThreadUrl(id);
+    }
+
+    if (!id && !url) return null;
+
+    return {
+      id,
+      url: url || "",
+      name: name || "未知名称",
+    };
+  }
+
+  function loadStoredOriginalGroup(copyThreadId) {
+    try {
+      const raw = sessionStorage.getItem("fb-original-group-context");
+      if (!raw) return null;
+      const stored = JSON.parse(raw);
+      if (!stored?.id || stored.id === copyThreadId) return null;
+      if (Date.now() - (stored.savedAt || 0) > 6 * 60 * 60 * 1000) return null;
+      return {
+        id: stored.id,
+        url: stored.url || normalizeThreadUrl(stored.id),
+        name: stored.name || "",
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function enrichCopyGroupAlert(alert, items, doc, pageText, scoredThreads) {
+    if (!alert?.detected) return alert;
+
+    const visibleTitle = extractVisibleGroupTitle(doc);
+
+    alert.copyThread = enrichThreadRef(
+      alert.copyThread,
+      pageText,
+      scoredThreads,
+      items,
+      visibleTitle,
+      false
+    );
+
+    if (!alert.originalThread) {
+      const fromItems = items.find((entry) => entry.role === "original");
+      if (fromItems) {
+        alert.originalThread = {
+          id: fromItems.url.split("/messages/t/")[1],
+          url: fromItems.url,
+          name: fromItems.groupName,
+        };
+      }
+    }
+
+    if (!alert.originalThread) {
+      const stored = loadStoredOriginalGroup(alert.copyThread?.id);
+      if (stored) alert.originalThread = stored;
+    }
+
+    if (!alert.originalThread) {
+      const fallback = items.find(
+        (entry) => entry.url && entry.url !== alert.copyThread?.url && entry.groupName
+      );
+      if (fallback) {
+        alert.originalThread = {
+          id: fallback.url.split("/messages/t/")[1],
+          url: fallback.url,
+          name: fallback.groupName,
+        };
+      }
+    }
+
+    alert.originalThread = enrichThreadRef(
+      alert.originalThread,
+      pageText,
+      scoredThreads,
+      items,
+      visibleTitle,
+      true
+    );
+
+    if (alert.originalThread && alert.copyThread) {
+      alert.summary = `原小组「${alert.originalThread.name}」已被生成复制组「${alert.copyThread.name}」。请查看下方原小组与复制组的名称和链接。`;
+    }
+
+    return alert;
+  }
+
+  function saveOriginalGroupContext(items) {
+    const candidate =
+      items.find((entry) => entry.role === "original") ||
+      items.find((entry) => entry.groupName) ||
+      items[0];
+
+    if (!candidate?.url) return;
+
+    const id = candidate.url.split("/messages/t/")[1];
+    if (!id) return;
+
+    sessionStorage.setItem(
+      "fb-original-group-context",
+      JSON.stringify({
+        id,
+        url: candidate.url,
+        name: candidate.groupName || extractVisibleGroupTitle(),
+        savedAt: Date.now(),
+      })
+    );
+  }
+
   function detectFolderHint(context) {
     const folderMatch = context.match(/"folder"\s*:\s*"([A-Z_]+)"/i);
     if (folderMatch) {
@@ -257,8 +428,7 @@
       return {
         detected: true,
         confidence: "high",
-        summary:
-          "检测到复制组通话：有人在通话里邀请了组外成员，当前通话可能已变成复制组，原组通话或已断开。",
+        summary: `原组「${originalProfile.groupName || "未知名称"}」已被生成复制组。有人在通话里邀请了组外成员，原组通话可能已断开。`,
         copyThread: {
           id: pair.copyId,
           url: normalizeThreadUrl(pair.copyId),
@@ -280,8 +450,7 @@
       return {
         detected: true,
         confidence: uiSignal ? "high" : "medium",
-        summary:
-          "疑似出现复制组：页面中存在多个群聊 thread。当前通话更可能对应「复制组」，另一个可能是「原组」。",
+        summary: `原组「${originalCandidate.groupName || "未知名称"}」疑似已被生成复制组，当前通话更可能已是复制组。`,
         copyThread: {
           id: copyCandidate.id,
           url: copyCandidate.url,
@@ -437,8 +606,10 @@
       });
     }
 
-    const copyGroupAlert = detectCopyGroupScenario(pageText, scoredThreads, visibleText);
-    const items = applyCopyRoles(Array.from(results.values()), copyGroupAlert);
+    const itemsArray = Array.from(results.values());
+    const rawAlert = detectCopyGroupScenario(pageText, scoredThreads, visibleText);
+    const copyGroupAlert = enrichCopyGroupAlert(rawAlert, itemsArray, doc, pageText, scoredThreads);
+    const items = applyCopyRoles(itemsArray, copyGroupAlert);
 
     return { items, copyGroupAlert };
   }
@@ -481,5 +652,8 @@
     extractFromUrl: (url) => Array.from(extractFromUrl(url).values()),
     pickBestResult,
     normalizeThreadUrl,
+    extractVisibleGroupTitle,
+    saveOriginalGroupContext,
+    enrichCopyGroupAlert,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

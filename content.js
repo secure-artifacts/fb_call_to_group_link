@@ -3,11 +3,11 @@
   globalThis.__fbGroupLinkFinderLoaded = true;
 
   const BADGE_ID = "fb-group-link-finder-badge";
-  const WARN_ID = "fb-group-link-finder-warn";
+  const COPY_MODAL_ID = "fb-group-link-finder-copy-modal";
 
   let lastAlertKey = "";
   let dismissedBadgeUrl = "";
-  let dismissedWarnKey = "";
+  let dismissedCopyKey = "";
   let scanQueued = false;
   let observer = null;
 
@@ -31,6 +31,7 @@
 
     const handleCopy = async (event) => {
       stopEvent(event);
+      if (!copyBtn || !url) return;
       try {
         await navigator.clipboard.writeText(url);
         copyBtn.textContent = "已复制";
@@ -55,69 +56,184 @@
     closeBtn?.addEventListener("click", handleClose, true);
   }
 
-  function showCopyGroupWarning(alert, copyItem) {
+  function showCopyGroupCenterModal(alert, copyItem) {
     if (!alert?.detected) return;
 
     const alertKey = `${alert.copyThread?.id || ""}:${alert.originalThread?.id || ""}`;
-    if (alertKey && alertKey === dismissedWarnKey) return;
-    if (alertKey && alertKey === lastAlertKey && document.getElementById(WARN_ID)) return;
+    if (alertKey && alertKey === dismissedCopyKey) return;
+    if (alertKey && alertKey === lastAlertKey && document.getElementById(COPY_MODAL_ID)) return;
     lastAlertKey = alertKey;
 
-    document.getElementById(WARN_ID)?.remove();
+    document.getElementById(COPY_MODAL_ID)?.remove();
 
     const copyUrl = alert.copyThread?.url || copyItem?.url || "";
-    const originalBlock = alert.originalThread?.url
-      ? `<div style="margin-top:8px;"><strong>原组：</strong>${escapeHtml(alert.originalThread.name)}<br><a href="${alert.originalThread.url}" target="_blank" rel="noopener">${alert.originalThread.url}</a></div>`
-      : "";
+    const originalName = alert.originalThread?.name || "未能识别名称";
+    const originalUrl = alert.originalThread?.url || "";
+    const copyName = alert.copyThread?.name || "未能识别名称";
 
-    const warn = document.createElement("div");
-    warn.id = WARN_ID;
-    warn.setAttribute("data-fb-group-link-finder", "warn");
-    warn.innerHTML = `
+    const headline = alert.originalThread
+      ? `原小组「${originalName}」已被生成复制组`
+      : `检测到复制组（正在识别原小组信息）`;
+
+    const overlay = document.createElement("div");
+    overlay.id = COPY_MODAL_ID;
+    overlay.setAttribute("data-fb-group-link-finder", "copy-modal");
+    overlay.innerHTML = `
       <style>
-        #${WARN_ID} {
+        #${COPY_MODAL_ID} {
           position: fixed;
-          top: 20px;
-          right: 20px;
+          inset: 0;
           z-index: 2147483647;
-          background: #b42318;
-          color: #fff;
-          padding: 14px 16px;
-          border-radius: 10px;
-          box-shadow: 0 6px 24px rgba(0,0,0,.35);
-          font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          max-width: 360px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.65);
           pointer-events: auto;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", sans-serif;
         }
-        #${WARN_ID} strong.title { display: block; font-size: 15px; margin-bottom: 6px; }
-        #${WARN_ID} a { color: #fff; word-break: break-all; pointer-events: auto; }
-        #${WARN_ID} button {
-          margin-top: 10px;
-          margin-right: 6px;
+        #${COPY_MODAL_ID} .fb-copy-card {
+          width: min(560px, calc(100vw - 40px));
+          background: #fff;
+          color: #1c1e21;
+          border-radius: 18px;
+          box-shadow: 0 24px 64px rgba(0, 0, 0, 0.38);
+          padding: 28px 28px 22px;
+        }
+        #${COPY_MODAL_ID} .fb-copy-icon {
+          font-size: 48px;
+          text-align: center;
+          margin-bottom: 8px;
+        }
+        #${COPY_MODAL_ID} .fb-copy-title {
+          margin: 0 0 10px;
+          font-size: 24px;
+          font-weight: 700;
+          color: #b42318;
+          text-align: center;
+          line-height: 1.35;
+        }
+        #${COPY_MODAL_ID} .fb-copy-sub {
+          margin: 0 0 16px;
+          font-size: 15px;
+          line-height: 1.6;
+          color: #3b3f45;
+          text-align: center;
+        }
+        #${COPY_MODAL_ID} .fb-copy-section {
+          background: #f7f8fa;
+          border-radius: 12px;
+          padding: 14px;
+          margin-bottom: 12px;
+        }
+        #${COPY_MODAL_ID} .fb-copy-section strong {
+          display: block;
+          font-size: 14px;
+          margin-bottom: 6px;
+          color: #050505;
+        }
+        #${COPY_MODAL_ID} .fb-copy-section.original strong { color: #0a58ca; }
+        #${COPY_MODAL_ID} .fb-copy-section.copy strong { color: #b42318; }
+        #${COPY_MODAL_ID} .fb-copy-name {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 6px;
+        }
+        #${COPY_MODAL_ID} a {
+          color: #1877f2;
+          word-break: break-all;
+          font-size: 13px;
+        }
+        #${COPY_MODAL_ID} .fb-copy-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+          margin-top: 18px;
+          flex-wrap: wrap;
+        }
+        #${COPY_MODAL_ID} button {
           border: none;
-          border-radius: 6px;
-          padding: 6px 10px;
+          border-radius: 10px;
+          padding: 12px 18px;
+          font-size: 15px;
           cursor: pointer;
-          background: rgba(255,255,255,.2);
-          color: #fff;
-          pointer-events: auto;
         }
+        #${COPY_MODAL_ID} [data-copy] { background: #1877f2; color: #fff; }
+        #${COPY_MODAL_ID} [data-copy-original] { background: #e7f3ff; color: #0a58ca; }
+        #${COPY_MODAL_ID} [data-close] { background: #e4e6eb; color: #050505; }
       </style>
-      <strong class="title">⚠️ 检测到复制组通话</strong>
-      <div>${escapeHtml(alert.summary)}</div>
-      <div style="margin-top:8px;"><strong>复制组：</strong>${escapeHtml(alert.copyThread?.name || "未知")}<br><a href="${copyUrl}" target="_blank" rel="noopener">${copyUrl}</a></div>
-      ${originalBlock}
-      <div>
-        <button type="button" data-copy>复制复制组链接</button>
-        <button type="button" data-close>关闭</button>
+      <div class="fb-copy-card" role="alertdialog" aria-modal="true">
+        <div class="fb-copy-icon">⚠️</div>
+        <h2 class="fb-copy-title">${escapeHtml(headline)}</h2>
+        <p class="fb-copy-sub">${escapeHtml(alert.summary || "有人在通话中邀请了组外成员。下方会分别给出原小组与复制组的名称和链接。")}</p>
+        <div class="fb-copy-section original">
+          <strong>被复制的原小组</strong>
+          <div class="fb-copy-name">${escapeHtml(originalName)}</div>
+          ${
+            originalUrl
+              ? `<a href="${originalUrl}" target="_blank" rel="noopener">${originalUrl}</a>`
+              : `<p style="margin:0;font-size:13px;color:#65676b;">原小组链接暂未识别，请稍后再次解析或查看插件结果列表。</p>`
+          }
+        </div>
+        <div class="fb-copy-section copy">
+          <strong>新生成的复制组</strong>
+          <div class="fb-copy-name">${escapeHtml(copyName)}</div>
+          ${
+            copyUrl
+              ? `<a href="${copyUrl}" target="_blank" rel="noopener">${copyUrl}</a>`
+              : `<p style="margin:0;font-size:13px;color:#65676b;">复制组链接暂未识别。</p>`
+          }
+        </div>
+        <div class="fb-copy-actions">
+          ${copyUrl ? `<button type="button" data-copy>复制复制组链接</button>` : ""}
+          ${originalUrl ? `<button type="button" data-copy-original>复制原小组链接</button>` : ""}
+          <button type="button" data-close>关闭</button>
+        </div>
       </div>
     `;
 
-    bindPanelActions(warn, copyUrl, () => {
-      dismissedWarnKey = alertKey;
-    });
+    const closeModal = () => {
+      dismissedCopyKey = alertKey;
+      overlay.remove();
+    };
 
-    document.documentElement.appendChild(warn);
+    overlay.querySelector("[data-close]")?.addEventListener("click", closeModal, true);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeModal();
+    }, true);
+
+    overlay.querySelector("[data-copy]")?.addEventListener(
+      "click",
+      async (event) => {
+        stopEvent(event);
+        try {
+          await navigator.clipboard.writeText(copyUrl);
+          overlay.querySelector("[data-copy]").textContent = "已复制";
+        } catch {
+          overlay.querySelector("[data-copy]").textContent = "复制失败";
+        }
+      },
+      true
+    );
+
+    overlay.querySelector("[data-copy-original]")?.addEventListener(
+      "click",
+      async (event) => {
+        stopEvent(event);
+        try {
+          await navigator.clipboard.writeText(originalUrl);
+          overlay.querySelector("[data-copy-original]").textContent = "已复制";
+        } catch {
+          overlay.querySelector("[data-copy-original]").textContent = "复制失败";
+        }
+      },
+      true
+    );
+
+    document.documentElement.appendChild(overlay);
+
+    if (copyUrl) {
+      navigator.clipboard.writeText(copyUrl).catch(() => {});
+    }
 
     chrome.runtime.sendMessage({
       type: "COPY_GROUP_ALERT",
@@ -129,7 +245,7 @@
   function showBadge(item) {
     if (!item?.url) return;
     if (item.url === dismissedBadgeUrl) return;
-    if (document.getElementById(WARN_ID)) return;
+    if (document.getElementById(COPY_MODAL_ID)) return;
     if (document.getElementById(BADGE_ID)) return;
 
     const roleLine =
@@ -194,9 +310,12 @@
     const best = FBGroupLinkExtractor.pickBestResult(items, copyGroupAlert);
 
     if (copyGroupAlert.detected) {
-      showCopyGroupWarning(copyGroupAlert, best);
-    } else if (best) {
-      showBadge(best);
+      showCopyGroupCenterModal(copyGroupAlert, best);
+    } else {
+      FBGroupLinkExtractor.saveOriginalGroupContext(items);
+      if (best) {
+        showBadge(best);
+      }
     }
 
     return { items, copyGroupAlert };
@@ -207,7 +326,7 @@
     scanQueued = true;
     requestAnimationFrame(() => {
       scanQueued = false;
-      if (document.getElementById(BADGE_ID) || document.getElementById(WARN_ID)) {
+      if (document.getElementById(BADGE_ID) || document.getElementById(COPY_MODAL_ID)) {
         return;
       }
       scanPage();
@@ -233,9 +352,9 @@
           (node) =>
             node instanceof Element &&
             (node.id === BADGE_ID ||
-              node.id === WARN_ID ||
+              node.id === COPY_MODAL_ID ||
               node.id === "fb-group-link-finder-hangup-modal" ||
-              node.closest?.(`#${BADGE_ID}, #${WARN_ID}, #fb-group-link-finder-hangup-modal`) ||
+              node.closest?.(`#${BADGE_ID}, #${COPY_MODAL_ID}, #fb-group-link-finder-hangup-modal`) ||
               node.getAttribute?.("data-fb-group-link-finder"))
         )
       );
