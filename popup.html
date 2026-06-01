@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FB通话复制组检测</title>
+    <title>FB通话状态检测</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header>
-      <h1>FB通话复制组检测</h1>
-      <p>从通话链接查找复制组群聊，解析 messages/t/ 链接</p>
+      <h1>FB通话状态检测</h1>
+      <p>检测复制组、意外断线并弹窗提醒，解析群聊链接</p>
     </header>
 
     <section class="card">
@@ -43,7 +43,7 @@
     </section>
 
     <footer>
-      <p>复制组：通话中邀请组外成员后，FB 会新建群聊，原组通话常断开。插件会提醒并给出复制组链接。</p>
+      <p>复制组：通话中邀请组外成员会新建群聊；意外断线（非你主动挂断）也会中央弹窗提醒，并尽量给出群聊链接。</p>
     </footer>
 
     <script src="extractor.js"></script>

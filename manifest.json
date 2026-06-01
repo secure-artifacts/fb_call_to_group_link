@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "FB通话复制组检测",
-  "version": "1.6.1",
-  "description": "FB通话复制组检测：解析群聊链接，检测复制组与通话意外挂断并提醒",
+  "name": "FB通话状态检测",
+  "version": "1.6.2",
+  "description": "FB通话状态检测：检测复制组、通话意外断线并弹窗提醒，解析群聊链接",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage", "downloads"],
   "host_permissions": [
     "https://www.facebook.com/*",
@@ -15,7 +15,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "FB通话复制组检测"
+    "default_title": "FB通话状态检测"
   },
   "background": {
     "service_worker": "background.js"
