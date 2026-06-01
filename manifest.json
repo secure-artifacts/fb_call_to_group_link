@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "FB小组检测器",
-  "version": "1.6.0",
-  "description": "FB小组检测器：解析群聊链接，检测复制组与通话意外挂断并提醒",
+  "name": "FB通话复制组检测",
+  "version": "1.6.1",
+  "description": "FB通话复制组检测：解析群聊链接，检测复制组与通话意外挂断并提醒",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "tabs", "notifications", "storage", "downloads"],
   "host_permissions": [
     "https://www.facebook.com/*",
@@ -15,7 +15,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "FB小组检测器"
+    "default_title": "FB通话复制组检测"
   },
   "background": {
     "service_worker": "background.js"
